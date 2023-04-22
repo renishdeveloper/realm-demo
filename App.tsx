@@ -1,110 +1,85 @@
-import React from 'react';
-import type {PropsWithChildren} from 'react';
+//#region Imports
+import React, { useState } from 'react';
 import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
-  useColorScheme,
-  View,
+  View,Button,
 } from 'react-native';
+import Realm from 'realm';
+import ImageSchema from './App/src/RealmSchema/ImageSchema';
+import ImagePicker from 'react-native-image-picker';
+import RNFS from 'react-native-fs';
+import RNPermissions from 'react-native-permissions';
+//#endregion
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+function App(): JSX.Element {
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+  const realm = new Realm({ schema: [ImageSchema] });
 
-function Section({children, title}: SectionProps): JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+  const [image, setImage] = useState(null);
+
+  const pickImage = async () => {
+    const permission = await RNPermissions.request('photo');
+    // if (permission !== 'authorized') {
+    //   console.warn('Photo permission denied');
+    //   return;
+    // }
+
+    ImagePicker.launchImageLibrary(
+      {
+        mediaType: 'photo',
+        maxWidth: 1024,
+        maxHeight: 1024,
+      },
+      (response) => {
+        if (response.didCancel) {
+          console.warn('Image picker cancelled');
+        } else if (response.error) {
+          console.warn('Image picker error', response.error);
+        } else {
+          const id = new Date().toISOString();
+          const path = `${RNFS.DocumentDirectoryPath}/${id}.jpg`;
+
+          RNFS.copyFile(response.uri, path).then(() => {
+            realm.write(() => {
+              realm.create('Image', { id, path });
+            });
+            setImage({ uri: response.uri });
+          });
+        }
+      }
+    );
+  };
+
   return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
+    <View style={styles.container}>
+      {image ? (
+        <Image source={image} style={styles.image} />
+      ) : (
+        <Text style={styles.placeholder}>No image selected</Text>
+      )}
+      <Button title="Select image" onPress={pickImage} />
     </View>
   );
 }
 
-function App(): JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
-
-  return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
-
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
   },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
+  image: {
+    width: '100%',
+    aspectRatio: 1,
+    resizeMode: 'contain',
+    marginBottom: 16,
   },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
+  placeholder: {
+    fontSize: 16,
+    fontStyle: 'italic',
+    marginBottom: 16,
   },
 });
 
