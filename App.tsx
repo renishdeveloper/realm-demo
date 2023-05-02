@@ -13,7 +13,6 @@ import Realm from 'realm';
 import ImageSchema from './App/src/RealmSchema/ImageSchema';
 import ImagePicker from 'react-native-image-picker';
 import RNFS from 'react-native-fs';
-import RNPermissions from 'react-native-permissions';
 import {launchImageLibrary} from 'react-native-image-picker';
 //#endregion
 
